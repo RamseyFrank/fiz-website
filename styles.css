@@ -185,35 +185,48 @@ html.age-gate-active{overflow:hidden; overscroll-behavior:none;}
     /* Use the video's native ratio to remove letterboxing without shrinking the animation. */
     .hero-video{width:100%; max-width:620px; height:auto; aspect-ratio:16 / 9; object-fit:contain; display:block; background:transparent;}
     /* Full-width background dots stay behind the video and dissolve through a long tail. */
-    .hero::after{
+    .hero::before,.hero::after{
       content:""; position:absolute; inset:0; z-index:0;
-      --dot-opacity:.22;
-      pointer-events:none; opacity:var(--dot-opacity);
-      background-image:radial-gradient(circle, var(--mint) 1px, transparent 1.2px);
+      --dot-wave-opacity:.34;
+      pointer-events:none; opacity:.22;
+      background-image:radial-gradient(circle, #78998b 1px, transparent 1.2px);
       background-size:14px 14px;
       --dot-step:14px;
-      animation:hero-dot-drift 8s linear infinite, hero-dot-breathe 6s ease-in-out infinite;
+      animation:hero-dot-drift 12s linear infinite;
       -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.35), #000 45%, rgba(0,0,0,.65) 65%, transparent 100%);
       mask-image:linear-gradient(to bottom, rgba(0,0,0,.35), #000 45%, rgba(0,0,0,.65) 65%, transparent 100%);
+    }
+    /* A soft diagonal wave brightens only the dots, never the video or page. */
+    .hero::before{
+      opacity:0;
+      -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.35), #000 45%, rgba(0,0,0,.65) 65%, transparent), linear-gradient(135deg, transparent 35%, #000 50%, transparent 65%);
+      mask-image:linear-gradient(to bottom, rgba(0,0,0,.35), #000 45%, rgba(0,0,0,.65) 65%, transparent), linear-gradient(135deg, transparent 35%, #000 50%, transparent 65%);
+      -webkit-mask-size:100% 100%, 300% 300%; mask-size:100% 100%, 300% 300%;
+      -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+      -webkit-mask-composite:source-in; mask-composite:intersect;
+      animation:hero-dot-drift 12s linear infinite, hero-dot-wave 12s ease-in-out infinite;
     }
     @keyframes hero-dot-drift{
       from{background-position:0 0;}
       to{background-position:0 var(--dot-step);}
     }
-    @keyframes hero-dot-breathe{
-      0%,100%{opacity:var(--dot-opacity);}
-      50%{opacity:calc(var(--dot-opacity) * .7);}
+    @keyframes hero-dot-wave{
+      0%{opacity:0; -webkit-mask-position:0 0, 100% 100%; mask-position:0 0, 100% 100%;}
+      20%,80%{opacity:var(--dot-wave-opacity);}
+      100%{opacity:0; -webkit-mask-position:0 0, 0% 0%; mask-position:0 0, 0% 0%;}
     }
     @media(prefers-reduced-motion:reduce){
+      .hero::before{display:none;}
       .hero::after{animation:none;}
     }
     @media(max-width:560px){
       .hero{padding-bottom:clamp(180px, 50vw, 260px);}
-      .hero::after{
-        --dot-opacity:.16; --dot-step:12px;
-        background-image:radial-gradient(circle, var(--mint) .8px, transparent 1px);
+      .hero::before,.hero::after{
+        --dot-wave-opacity:.24; --dot-step:12px;
+        background-image:radial-gradient(circle, #78998b .8px, transparent 1px);
         background-size:12px 12px;
       }
+      .hero::after{opacity:.16;}
     }
   
   
