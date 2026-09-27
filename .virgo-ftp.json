@@ -1,0 +1,12 @@
+{
+    "host": "212.85.28.126",
+    "port": 21,
+    "user": "u838670014.fizproducts.com",
+    "protocol": "ftp",
+    "remotePath": "/public_html",
+    "uploadOnSave": true,
+    "ignore": [
+      ".vscode/**",
+      ".virgo-ftp.json"
+    ]
+  }
