@@ -244,6 +244,23 @@ html.age-gate-active{overflow:hidden; overscroll-behavior:none;}
     }
     .product-details{text-align:left; width:100%; max-width:520px; align-self:start; padding-top:clamp(32px, 5vw, 72px);}
     .product-details h2{font-size:clamp(32px, 4vw, 56px); line-height:0.94; margin:0 0 14px; letter-spacing:-0.06em;}
+    .product-flavor-name{color:inherit;}
+    /* Keep plain text for touch, reduced motion, forced colors, and older browsers. */
+    @supports ((background-clip:text) or (-webkit-background-clip:text)){
+      @media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) and (forced-colors:none){
+        .product-flavor-name:hover{
+          background-image:linear-gradient(110deg, #3f4c49 0%, #727e80 25%, #456a5b 42%, #b9d8cd 48%, var(--brand-mint) 50%, #78888a 54%, #456a5b 65%, #3f4c49 100%);
+          background-size:200% 100%;
+          -webkit-background-clip:text; background-clip:text;
+          color:transparent; -webkit-text-fill-color:transparent;
+          animation:wintergreen-sheen 2s linear infinite;
+        }
+      }
+    }
+    @keyframes wintergreen-sheen{
+      from{background-position:0% 50%;}
+      to{background-position:200% 50%;}
+    }
     .price{font-size:clamp(22px, 2vw, 28px); font-weight:700; color:var(--mint); margin:0; letter-spacing:-0.03em;} 
     .desc{display:block; margin:18px 0 0; font-size:16px; color:var(--ink-soft); line-height:1.7; max-width:40ch;}
     .product-badges{display:flex; flex-wrap:wrap; gap:8px; margin:20px 0 24px;}
