@@ -19,6 +19,7 @@
 
   const dialog = document.createElement('dialog');
   dialog.className = 'age-gate';
+  dialog.setAttribute('closedby', 'none');
   dialog.setAttribute('aria-labelledby', 'ageGateTitle');
   dialog.setAttribute('aria-describedby', 'ageGateDescription');
   dialog.innerHTML = `
@@ -38,16 +39,31 @@
 
   function showGate() {
     if (dialog.open || isAccepted()) return;
-    previousFocus = document.activeElement;
-    scrollPosition = window.scrollY;
-    document.body.style.setProperty('--age-gate-scroll', `-${scrollPosition}px`);
-    document.documentElement.classList.add('age-gate-active');
+    if (!document.documentElement.classList.contains('age-gate-active')) {
+      previousFocus = document.activeElement;
+      scrollPosition = window.scrollY;
+      document.body.style.setProperty('--age-gate-scroll', `-${scrollPosition}px`);
+      document.documentElement.classList.add('age-gate-active');
+    }
     dialog.showModal();
     title.focus({ preventScroll: true });
+    document.dispatchEvent(new Event('fiz:overlaychange'));
   }
 
   // Escape and backdrop clicks must never grant access.
   dialog.addEventListener('cancel', (event) => event.preventDefault());
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') event.preventDefault();
+  });
+  dialog.addEventListener('close', () => {
+    // Platform dismissal must not bypass acceptance or strand the scroll lock.
+    if (!isAccepted()) { showGate(); return; }
+    document.documentElement.classList.remove('age-gate-active');
+    document.body.style.removeProperty('--age-gate-scroll');
+    window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    document.dispatchEvent(new Event('fiz:overlaychange'));
+  });
   dialog.querySelector('.age-gate-yes').addEventListener('click', () => {
     acceptedInMemory = Date.now();
     try {
@@ -56,10 +72,6 @@
       // Do not prevent access when browser storage is unavailable.
     }
     dialog.close();
-    document.documentElement.classList.remove('age-gate-active');
-    document.body.style.removeProperty('--age-gate-scroll');
-    window.scrollTo({ top: scrollPosition, behavior: 'instant' });
-    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
   });
   dialog.querySelector('.age-gate-no').addEventListener('click', () => {
     title.textContent = 'This website is restricted to adults 21 and older.';
