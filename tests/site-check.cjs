@@ -16,7 +16,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(404); return res.end();
   }
   const length = fs.statSync(filename).size;
-  res.setHeader('Content-Type', ({ '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.webm': 'video/webm' })[path.extname(filename)] || 'application/octet-stream');
+  res.setHeader('Content-Type', ({ '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.webm': 'video/webm', '.mov': 'video/quicktime' })[path.extname(filename)] || 'application/octet-stream');
   res.setHeader('Accept-Ranges', 'bytes');
   const range = req.headers.range?.match(/^bytes=(\d+)-(\d*)$/);
   if (range) {
@@ -53,6 +53,17 @@ server.listen(0, '127.0.0.1', async () => {
   });
   const timeout = setTimeout(() => { console.error('Browser check timed out'); chrome.kill(); server.close(); process.exit(1); }, 150000);
   try {
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const mediaPaths = [...html.matchAll(/data-(?:apple-)?(?:desktop|mobile)-src="([^"]+)"/g)].map((match) => match[1]);
+    assert.equal(mediaPaths.length, 8);
+    for (const asset of mediaPaths) {
+      assert(fs.existsSync(path.join(root, asset)), 'Missing animation: ' + asset);
+      const response = await fetch(`http://127.0.0.1:${server.address().port}/${asset}`, { headers: { Range: 'bytes=0-31' } });
+      assert.equal(response.status, 206);
+      assert.equal(response.headers.get('content-type'), asset.endsWith('.mov') ? 'video/quicktime' : 'video/webm');
+      assert.equal((await response.arrayBuffer()).byteLength, 32);
+    }
+    console.log('PASS: all eight animation paths exist and serve the correct MIME type and byte ranges');
     const target = await send('Target.createTarget', { url: 'about:blank' });
     const session = (await send('Target.attachToTarget', { targetId: target.targetId, flatten: true })).sessionId;
     for (const method of ['Runtime.enable', 'Page.enable', 'Network.enable']) await send(method, {}, session);
@@ -106,7 +117,7 @@ server.listen(0, '127.0.0.1', async () => {
     check('Age gate resists repeated Escape/platform dismissal; no video fetch behind gate; acceptance unlocks and starts video');
 
     const imageOrder = ['FIZ_2_cans.png', 'FIZ_5_cans.png', 'FIZ_Product_Front_Side.png', 'FIZ_back_label.png', 'FIZ_stack_5.png'];
-    for (const [width, height] of [[1440, 900], [1024, 768], [768, 1024], [560, 844], [390, 844], [320, 720], [844, 390], [320, 256]]) {
+    for (const [width, height] of [[1440, 900], [1024, 768], [769, 1024], [768, 1024], [561, 844], [560, 844], [390, 844], [320, 720], [844, 390], [320, 256]]) {
       await size(width, height); await navigate();
       await waitFor("document.querySelector('.hero-media').classList.contains('is-playing')");
       const metrics = await evaluate(`(() => {
@@ -150,6 +161,15 @@ server.listen(0, '127.0.0.1', async () => {
     await press('Escape', 'Escape', 27);
     assert(await evaluate("!photoDialog.open && document.activeElement === galleryZoom && !document.documentElement.classList.contains('dialog-active')"));
     check('Gallery source changes on resize; deselection pauses; photo enlargement, zoom, Escape and focus restoration');
+
+    for (const width of [768, 769]) {
+      await size(width, 1024); await navigate();
+      await evaluate("document.querySelectorAll('.gallery-thumb')[5].click();galleryMotion.scrollIntoView({block:'center',behavior:'instant'})");
+      const expected = width <= 768 ? 'Hero_animation_2_mobile.webm' : 'Hero_animation_2.webm';
+      await waitFor(`galleryVideo.currentSrc.endsWith('${expected}') && !galleryVideo.paused`);
+      assert.equal(new Set(requests.filter((url) => url.includes('Hero_animation_2') && url.endsWith('.webm'))).size, 1);
+    }
+    check('Non-Apple gallery uses exactly one resolution at 768px and 769px');
 
     await evaluate('qtyPlus.click();addToCart.click()');
     assert(await evaluate("cartCount.textContent==='2' && addToCart.textContent==='Added' && !cartDialog.open && cartStatus.textContent.includes('2 five-packs added')"));
@@ -198,13 +218,37 @@ server.listen(0, '127.0.0.1', async () => {
     await send('Network.setBlockedURLs', { urls: [] }, session);
     check('Video failure leaves a visible still image');
 
-    await send('Network.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/153.0.0.0 Mobile/15E148 Safari/604.1', platform: 'iPhone' }, session);
-    await navigate();
-    await evaluate("document.querySelectorAll('.gallery-thumb')[5].click();galleryMotion.scrollIntoView({block:'center',behavior:'instant'})"); await pause(300);
-    assert.equal(requests.filter((url) => /\.(webm|mov)$/.test(url)).length, 0);
-    assert(await evaluate("[...document.querySelectorAll('.media-poster')].every(e=>e.complete&&e.naturalWidth>0) && !galleryMotion.classList.contains('is-playing')"));
-    await screenshot('apple-still-fallback');
-    check('Emulated iPhone Chrome selects transparent stills pending owner HEVC exports; no incompatible or missing video requests');
+    // Routing/failure checks only: Windows Chrome cannot verify Apple's alpha decoder.
+    // Block MOV responses deliberately to exercise the existing transparent still fallback.
+    await send('Network.setBlockedURLs', { urls: ['*.mov'] }, session);
+    const appleProfiles = [
+      { name: 'iPhone Chrome', platform: 'iPhone', vendor: 'Google Inc.', touch: 5, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/153.0.0.0 Mobile/15E148 Safari/604.1' },
+      { name: 'iPhone Safari', platform: 'iPhone', vendor: 'Apple Computer, Inc.', touch: 5, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1' },
+      { name: 'macOS Safari', platform: 'MacIntel', vendor: 'Apple Computer, Inc.', touch: 0, userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15' },
+      { name: 'iPad desktop mode', platform: 'MacIntel', vendor: 'Google Inc.', touch: 5, userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15' },
+    ];
+    for (const profile of appleProfiles) {
+      await send('Network.setUserAgentOverride', { userAgent: profile.userAgent, platform: profile.platform }, session);
+      const injection = await send('Page.addScriptToEvaluateOnNewDocument', { source: `Object.defineProperty(navigator, 'vendor', {get:()=>${JSON.stringify(profile.vendor)}});Object.defineProperty(navigator, 'maxTouchPoints', {get:()=>${profile.touch}});` }, session);
+      for (const width of [390, 560, 561, 768, 769, 1440]) {
+        // Unload the previous selected gallery before resizing so its legitimate
+        // breakpoint request is not counted as a request from the next page.
+        await send('Page.navigate', { url: 'about:blank' }, session);
+        await waitFor("location.href === 'about:blank' && document.readyState === 'complete'");
+        await size(width, 1024); await navigate();
+        const hero = width <= 560 ? 'fiz-hero-section_mobile_apple.mov' : 'fiz-hero-section_apple.mov';
+        const gallery = width <= 768 ? 'Hero_animation_2_mobile_apple.mov' : 'Hero_animation_2_apple.mov';
+        await waitFor(`document.querySelector('.hero-video').getAttribute('src') === 'images/${hero}' && document.querySelector('.hero-video').error !== null`);
+        assert.equal(requests.filter((url) => url.includes('Hero_animation_2') && /\.(mov|webm)$/.test(url)).length, 0);
+        await evaluate("document.querySelectorAll('.gallery-thumb')[5].click();galleryMotion.scrollIntoView({block:'center',behavior:'instant'})");
+        await waitFor(`galleryVideo.getAttribute('src') === 'images/${gallery}' && galleryVideo.error !== null`);
+        assert.deepEqual([...new Set(requests.filter((url) => /\.(webm|mov)$/.test(url)).map((url) => url.split('/').pop()))].sort(), [hero, gallery].sort());
+        assert(await evaluate("[...document.querySelectorAll('video')].every(v=>v.muted&&v.loop&&v.playsInline&&!v.controls) && [...document.querySelectorAll('.media-poster')].every(e=>e.complete&&e.naturalWidth>0) && !galleryMotion.classList.contains('is-playing')"));
+      }
+      await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: injection.identifier }, session);
+      check(`Emulated ${profile.name}: correct MOVs only at 390, 560, 561, 768, 769 and 1440px; blocked media retains stills`);
+    }
+    await send('Network.setBlockedURLs', { urls: [] }, session);
     assert.equal(report.errors.length, 0, JSON.stringify(report.errors));
     assert.equal(report.missing.length, 0, JSON.stringify(report.missing));
     check('No JavaScript exceptions or missing asset responses');
