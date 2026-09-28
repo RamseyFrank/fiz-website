@@ -12,6 +12,17 @@ if (heroVideo) {
     });
   };
   heroVideo.addEventListener('canplay', playHeroVideo);
+  // Assign just one URL so the preload scanner cannot fetch both versions.
+  const smallScreen = window.matchMedia('(max-width: 768px)');
+  const updateHeroSource = () => {
+    const source = smallScreen.matches ? heroVideo.dataset.mobileSrc : heroVideo.dataset.desktopSrc;
+    if (heroVideo.getAttribute('src') === source) return;
+    heroVideo.src = source;
+    heroVideo.load();
+    playHeroVideo();
+  };
+  smallScreen.addEventListener('change', updateHeroSource);
+  updateHeroSource();
   document.addEventListener('visibilitychange', playHeroVideo);
   document.addEventListener('pointerdown', playHeroVideo, { once: true });
   document.addEventListener('keydown', playHeroVideo, { once: true });
@@ -28,18 +39,26 @@ const setHeroOffset = () => {
 setHeroOffset();
 window.addEventListener('resize', setHeroOffset);
 
-// Gallery slots use data-image and data-alt; empty paths are explicit photo placeholders.
+// The original hero video is loaded only when its final gallery slot is selected.
 const galleryImage = document.getElementById('galleryImage');
+const galleryVideo = document.getElementById('galleryVideo');
 const galleryPlaceholder = document.getElementById('galleryPlaceholder');
 const galleryCaption = document.getElementById('galleryCaption');
 const galleryThumbnails = document.querySelectorAll('.gallery-thumb');
 galleryThumbnails.forEach((thumbnail) => {
   thumbnail.addEventListener('click', () => {
     galleryThumbnails.forEach((item) => item.setAttribute('aria-pressed', String(item === thumbnail)));
-    const { image, alt } = thumbnail.dataset;
+    const { image, video, alt } = thumbnail.dataset;
+    galleryVideo.pause();
+    galleryVideo.hidden = !video;
     galleryImage.hidden = !image;
-    galleryPlaceholder.hidden = Boolean(image);
-    if (image) {
+    galleryPlaceholder.hidden = Boolean(image || video);
+    if (video) {
+      galleryVideo.muted = true;
+      if (galleryVideo.getAttribute('src') !== video) galleryVideo.src = video;
+      galleryVideo.play().catch(() => {});
+      galleryCaption.textContent = alt;
+    } else if (image) {
       galleryImage.src = image;
       galleryImage.alt = alt;
       galleryCaption.textContent = alt;
