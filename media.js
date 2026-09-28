@@ -70,7 +70,8 @@
       else update(state);
     });
     video.addEventListener('canplay', () => update(state));
-    video.addEventListener('waiting', () => frame.classList.remove('is-playing'));
+    // Keep the video visible through transient buffering and native loop seeks.
+    // Only initial loading, source changes, or playback failures need the poster.
     video.addEventListener('error', () => {
       state.failedSource = video.getAttribute('src');
       frame.classList.remove('is-playing');
