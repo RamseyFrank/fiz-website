@@ -128,7 +128,7 @@ server.listen(0, '127.0.0.1', async () => {
       })()`);
       assert(!metrics.overflow); assert(metrics.transparent > 0 && metrics.opaque > 0);
       assert(metrics.muted && metrics.loop && metrics.inline);
-      assert(metrics.src.endsWith(width <= 560 ? 'fiz-hero-section-alpha-mobile-transparent.webm' : 'fiz-hero-section-alpha.webm'));
+      assert(metrics.src.endsWith(width <= 560 ? 'fiz-hero-section-alpha-mobile-transparent.webm' : 'fiz-hero-section-desktop-1280.webm'));
       assert.equal(new Set(requests.filter((url) => url.endsWith('.webm'))).size, 1);
       assert(Math.abs(metrics.padding - (width <= 560 ? Math.min(208, Math.max(144, width * .4)) : Math.min(420, Math.max(260, width * .28)))) < 1);
       assert(metrics.warningText.y >= metrics.warning.y && metrics.warningText.bottom <= metrics.warning.bottom);
@@ -151,7 +151,7 @@ server.listen(0, '127.0.0.1', async () => {
     await size(1024, 768);
     await pause(100);
     await evaluate("galleryMotion.scrollIntoView({block:'center',behavior:'instant'})");
-    await waitFor("galleryVideo.currentSrc.endsWith('Hero_animation_2.webm') && !galleryVideo.paused");
+    await waitFor("galleryVideo.currentSrc.endsWith('Hero_animation_2-desktop-1280.webm') && !galleryVideo.paused");
     await evaluate("document.querySelectorAll('.gallery-thumb')[3].click();galleryZoom.focus();galleryZoom.click()");
     await waitFor('photoDialog.open');
     assert(await evaluate("galleryVideo.paused && photoImage.src.endsWith('FIZ_back_label.png')"));
@@ -165,7 +165,7 @@ server.listen(0, '127.0.0.1', async () => {
     for (const width of [768, 769]) {
       await size(width, 1024); await navigate();
       await evaluate("document.querySelectorAll('.gallery-thumb')[5].click();galleryMotion.scrollIntoView({block:'center',behavior:'instant'})");
-      const expected = width <= 768 ? 'Hero_animation_2_mobile.webm' : 'Hero_animation_2.webm';
+      const expected = width <= 768 ? 'Hero_animation_2_mobile.webm' : 'Hero_animation_2-desktop-1280.webm';
       await waitFor(`galleryVideo.currentSrc.endsWith('${expected}') && !galleryVideo.paused`);
       assert.equal(new Set(requests.filter((url) => url.includes('Hero_animation_2') && url.endsWith('.webm'))).size, 1);
     }

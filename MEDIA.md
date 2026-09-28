@@ -9,9 +9,9 @@ The original hero stays in the hero. `Hero_animation_2` stays last in the produc
 | Location | Viewport | Apple/WebKit source | Other browsers |
 | --- | --- | --- | --- |
 | Hero | <= 560px | `images/fiz-hero-section_mobile_apple.mov` | `images/fiz-hero-section-alpha-mobile-transparent.webm` |
-| Hero | > 560px | `images/fiz-hero-section_apple.mov` | `images/fiz-hero-section-alpha.webm` |
+| Hero | > 560px | `images/fiz-hero-section_apple.mov` | `images/fiz-hero-section-desktop-1280.webm` |
 | Gallery | <= 768px | `images/Hero_animation_2_mobile_apple.mov` | `images/Hero_animation_2_mobile.webm` |
-| Gallery | > 768px | `images/Hero_animation_2_apple.mov` | `images/Hero_animation_2.webm` |
+| Gallery | > 768px | `images/Hero_animation_2_apple.mov` | `images/Hero_animation_2-desktop-1280.webm` |
 
 The existing Apple branch recognizes iPhone/iPad/iPod, iPads using a Mac platform with touch support, and Safari's Apple vendor. Desktop Chrome/Firefox keep WebM. Resolution follows viewport width, including after resizing or rotating; an iPad above a breakpoint receives the desktop asset, as before.
 
@@ -40,3 +40,7 @@ Run `node tests/site-check.cjs` from the project root. Set `CHROME_PATH` if Chro
 The checks verify all eight asset paths, local MIME types and byte-range responses, plus WebM transparency/playback, layout, gallery ordering, pauses, reduced motion, and both sides of the 560px/768px breakpoints. Emulated iPhone Safari/Chrome, macOS Safari, and iPad profiles check MOV selection and one-resolution-only requests. MOV requests are deliberately blocked in those routing tests to verify still-image fallback; emulation does not validate Apple decoding.
 
 Test on real Safari/macOS and Safari/Chrome on iPhone: transparent edges over the dotted background, correct resolution, autoplay after age acceptance, looping/muted/inline playback, and gallery playback. Actual Apple alpha decoding cannot be verified in Windows Chrome.
+
+## Chrome desktop playback
+
+Desktop non-Apple playback uses 1280 x 720 VP9-with-alpha derivatives of the original 4K exports. This reduces decoded pixels per frame by 89% while preserving the 16:9 framing, 30 fps, 8-second duration and transparency. The hero renders at up to 620 CSS pixels wide and the gallery animation at up to 500, so these derivatives cover both at 2x density. Original 4K WebMs are retained unchanged. Apple MOV and mobile sources are unchanged.
