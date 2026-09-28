@@ -13,7 +13,7 @@ if (heroVideo) {
   };
   heroVideo.addEventListener('canplay', playHeroVideo);
   // Assign just one URL so the preload scanner cannot fetch both versions.
-  const smallScreen = window.matchMedia('(max-width: 768px)');
+  const smallScreen = window.matchMedia('(max-width: 560px)');
   const updateHeroSource = () => {
     const source = smallScreen.matches ? heroVideo.dataset.mobileSrc : heroVideo.dataset.desktopSrc;
     if (heroVideo.getAttribute('src') === source) return;
@@ -39,12 +39,24 @@ const setHeroOffset = () => {
 setHeroOffset();
 window.addEventListener('resize', setHeroOffset);
 
-// The original hero video is loaded only when its final gallery slot is selected.
+// Product animation loads only when selected, using one source for the viewport.
 const galleryImage = document.getElementById('galleryImage');
 const galleryVideo = document.getElementById('galleryVideo');
 const galleryPlaceholder = document.getElementById('galleryPlaceholder');
 const galleryCaption = document.getElementById('galleryCaption');
 const galleryThumbnails = document.querySelectorAll('.gallery-thumb');
+const gallerySmallScreen = window.matchMedia('(max-width: 768px)');
+const playGalleryVideo = (thumbnail) => {
+  const { video, mobileVideo } = thumbnail.dataset;
+  const source = gallerySmallScreen.matches && mobileVideo ? mobileVideo : video;
+  galleryVideo.muted = true;
+  if (galleryVideo.getAttribute('src') !== source) galleryVideo.src = source;
+  galleryVideo.play().catch(() => {});
+};
+gallerySmallScreen.addEventListener('change', () => {
+  const selected = document.querySelector('.gallery-thumb[aria-pressed="true"][data-video]');
+  if (selected) playGalleryVideo(selected);
+});
 galleryThumbnails.forEach((thumbnail) => {
   thumbnail.addEventListener('click', () => {
     galleryThumbnails.forEach((item) => item.setAttribute('aria-pressed', String(item === thumbnail)));
@@ -54,9 +66,7 @@ galleryThumbnails.forEach((thumbnail) => {
     galleryImage.hidden = !image;
     galleryPlaceholder.hidden = Boolean(image || video);
     if (video) {
-      galleryVideo.muted = true;
-      if (galleryVideo.getAttribute('src') !== video) galleryVideo.src = video;
-      galleryVideo.play().catch(() => {});
+      playGalleryVideo(thumbnail);
       galleryCaption.textContent = alt;
     } else if (image) {
       galleryImage.src = image;
